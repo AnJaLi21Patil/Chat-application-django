@@ -21,16 +21,25 @@ from django.contrib.auth.decorators import login_required
 @login_required
 def HomeView(request):
     if request.method == "POST":
-        username = request.POST["username"]
-        room = request.POST["room"]
-        try:
-            existing_room = Room.objects.get(room_name__icontains=room)
-        except Room.DoesNotExist:
-            Room.objects.create(room_name=room)
+        username = request.POST.get("username", "").strip() or "Anonymous"
+        room = request.POST.get("room", "").strip()
+
+        Room.objects.get_or_create(
+            room_name__iexact=room,
+            defaults={"room_name": room}
+        )
+
         return redirect("room", room_name=room, username=username)
 
-    # Pre-fill username
-    return render(request, "home.html", {"username": request.user.username})
+    # ✅ USE sender FIELD (NOT username)
+    users = (
+        Message.objects
+        .select_related("room")
+        .values("sender", "room__room_name")
+        .distinct()
+    )
+
+    return render(request, "home.html", {"users": users})
 
 
 def RoomView(request, room_name, username):
