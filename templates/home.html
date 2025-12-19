@@ -1,103 +1,10 @@
-{% comment %} <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Document</title>
-    <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-
-      .page-container {
-        background-color: #b1b1b1;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        width: 100%;
-        height: 100vh;
-      }
-
-      .content {
-        width: 80%;
-        max-width: 400px;
-        padding: 2rem;
-        height: fit-content;
-        max-height: 80vh;
-        background-color: #eef0f2;
-        border-radius: 1rem;
-        box-shadow: 0px 0px 1rem 0px rgba(0, 0, 0, 0.2);
-      }
-
-      h1 {
-        text-align: center;
-        font-size: 2rem;
-        margin-bottom: 1rem;
-      }
-
-      input[type="text"] {
-        outline: none;
-        border: none;
-        padding: 0.5rem 1rem;
-        background-color: #dadee1;
-        border-radius: 2rem;
-        width: 100%;
-        text-align: center;
-      }
-
-      button {
-        margin-top: 1rem;
-        border: 0;
-        outline: 0;
-        padding: 0.5rem 2rem;
-        background-color: #1b1f24;
-        border-radius: 2rem;
-        color: #ffffff;
-        font-size: 1.25rem;
-        font-weight: bold;
-        transition: 0.25s ease;
-      }
-
-      button:hover {
-        background-color: #353a41;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="page-container">
-      <div class="content">
-        <h1>Login</h1>
-        <form action="" method="post">
-          <!-- For the sake of security, all Django Post forms must have a csfr token tag -->
-          {% csrf_token %}
-          <input
-            type="text"
-            placeholder="Username"
-            name="username"
-            required
-          /><br /><br />
-          <input
-            type="text"
-            placeholder="Room Name"
-            name="room"
-            required
-          /><br />
-          <center>
-            <button type="submit">Enter Room</button>
-          </center>
-        </form>
-      </div>
-    </div>
-  </body>
-</html> {% endcomment %}
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Chat Home</title>
+
     <style>
       * {
         margin: 0;
@@ -118,10 +25,11 @@
 
       /* Sidebar */
       .sidebar {
-        width: 200px;
+        width: 220px;
         background-color: #eef0f2;
         padding: 1rem;
         border-right: 1px solid #ccc;
+        overflow-y: auto;
       }
 
       .sidebar h3 {
@@ -138,6 +46,37 @@
         padding: 0.5rem 0;
         border-bottom: 1px solid #ccc;
         text-align: center;
+      }
+
+      .hidden-user {
+        display: none;
+      }
+
+      .user-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 1rem;
+        color: black;
+      }
+
+      .user-btn:hover {
+        text-decoration: underline;
+        color: #353a41;
+      }
+
+      .read-more-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 0.95rem;
+        margin-top: 10px;
+        color: #1b1f24;
+        font-weight: bold;
+      }
+
+      .read-more-btn:hover {
+        text-decoration: underline;
       }
 
       /* Main content */
@@ -189,72 +128,67 @@
       button:hover {
         background-color: #353a41;
       }
-      .user-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 1rem;
-  color:black;
-}
-
-.user-btn:hover {
-  text-decoration: underline;
-  color: #eff3f8ff;
-}
-
     </style>
   </head>
+
   <body>
     <div class="page-container">
-      <!-- Sidebar for users -->
+      <!-- Sidebar -->
       <div class="sidebar">
         <h3>Users</h3>
-        {% comment %} <ul>
-          {% for user in users %}
-          <li>{{ user }}</li>
+
+        <ul id="userList">
+          {% for u in users %}
+            <li class="{% if forloop.counter > 5 %}hidden-user{% endif %}">
+              <button
+                type="button"
+                class="user-btn"
+                data-username="{{ u.sender }}"
+                data-room="{{ u.room__room_name }}"
+                onclick="selectUser(this)"
+              >
+                {{ u.sender }}
+              </button>
+            </li>
           {% empty %}
             <li>No other users</li>
           {% endfor %}
-        </ul> {% endcomment %}
-<ul>
-  {% for u in users %}
-    <li>
-      <button
-        type="button"
-        class="user-btn"
-        data-username="{{ u.sender }}"
-        data-room="{{ u.room__room_name }}"
-        onclick="selectUser(this)"
-      >
-        {{ u.sender }}
-      </button>
-    </li>
-  {% empty %}
-    <li>No other users</li>
-  {% endfor %}
-</ul>
+        </ul>
 
+        {% if users|length > 5 %}
+          <div style="text-align:center;">
+            <button
+              class="read-more-btn"
+              id="readMoreBtn"
+              onclick="toggleUsers()"
+            >
+              Read more
+            </button>
+          </div>
+        {% endif %}
       </div>
 
       <!-- Main content -->
       <div class="content">
         <div class="login-box">
           <h1>Login</h1>
+
           <form action="" method="post">
             {% csrf_token %}
             <input
-             type="text"
-             placeholder="Enter any name"
+              type="text"
+              placeholder="Enter any name"
               name="username"
               value="{{ username|default:'' }}"
-            
             /><br /><br />
+
             <input
               type="text"
               placeholder="Room Name"
               name="room"
               required
             /><br />
+
             <center>
               <button type="submit">Enter Room</button>
             </center>
@@ -262,15 +196,31 @@
         </div>
       </div>
     </div>
-<script>
-  function selectUser(btn) {
-    const username = btn.dataset.username;
-    const room = btn.dataset.room;
 
-    document.querySelector('input[name="username"]').value = username;
-    document.querySelector('input[name="room"]').value = room;
-  }
-</script>
+    <script>
+      function selectUser(btn) {
+        const username = btn.dataset.username;
+        const room = btn.dataset.room;
 
+        document.querySelector('input[name="username"]').value = username;
+        document.querySelector('input[name="room"]').value = room;
+      }
+
+      function toggleUsers() {
+        const hiddenUsers = document.querySelectorAll(".hidden-user");
+        const btn = document.getElementById("readMoreBtn");
+
+        hiddenUsers.forEach(user => {
+          user.style.display =
+            user.style.display === "none" || user.style.display === ""
+              ? "list-item"
+              : "none";
+        });
+
+        btn.innerText =
+          btn.innerText === "Read more" ? "Read less" : "Read more";
+      }
+    </script>
   </body>
 </html>
+

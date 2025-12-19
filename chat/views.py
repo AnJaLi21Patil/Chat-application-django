@@ -1,22 +1,21 @@
 from django.shortcuts import render, redirect
 from .models import Room, Message
 from django.contrib.auth.decorators import login_required
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
+from .serializers import RegisterSerializer
+from rest_framework import status
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib import messages
+from django.shortcuts import redirect, render
+from django.views.decorators.csrf import csrf_exempt
+from django.shortcuts import render, redirect
+from django.contrib.auth import authenticate, login
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 
 
-# Create your views here.
-
-# @login_required
-
-# def HomeView(request):
-#     if request.method == "POST":
-#         username = request.POST["username"]
-#         room = request.POST["room"]
-#         try:
-#             existing_room = Room.objects.get(room_name__icontains=room)
-#         except Room.DoesNotExist:
-#             r = Room.objects.create(room_name=room)
-#         return redirect("room", room_name=room, username=username)
-#     return render(request, "home.html")
 
 @login_required
 def HomeView(request):
@@ -53,10 +52,6 @@ def RoomView(request, room_name, username):
 
     return render(request, "room.html", context)
 
-from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
 
 def login_page(request):
     if request.method == "POST":
@@ -71,11 +66,6 @@ def login_page(request):
     return render(request, "login.html")
 
 
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
-from .serializers import RegisterSerializer
-from rest_framework import status
 
 class RegisterView(APIView):
     permission_classes = [AllowAny]
@@ -86,3 +76,21 @@ class RegisterView(APIView):
             serializer.save()
             return Response({"message": "User registered successfully"}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@csrf_exempt
+def register_page(request):
+    if request.method == "GET":
+        return render(request, "register.html")
+
+    if request.method == "POST":
+        response = RegisterView.as_view()(request)
+
+        # If registration successful
+        if response.status_code == 201:
+            messages.success(request, "Registration successful. Please login.")
+            return redirect("login")
+
+        # If error, show form again with error
+        messages.error(request, "Registration failed. Try again.")
+        return redirect("register")
