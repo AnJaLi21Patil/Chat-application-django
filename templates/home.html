@@ -225,109 +225,108 @@
 </html>
  {% endcomment %}
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>Chat App</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chat Home</title>
+
 <style>
-body { margin:0; font-family: Arial; }
-.container { display:flex; height:100vh; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; }
+  .page-container { display: flex; width: 100%; height: 100vh; background-color: #b1b1b1; }
 
-/* Sidebar */
-.sidebar {
-  width:250px;
-  border-right:1px solid #ccc;
-  padding:1rem;
-  background:#f7f7f7;
-}
-.user {
-  padding:10px;
-  cursor:pointer;
-  border-radius:5px;
-}
-.user:hover {
-  background:#ddd;
-}
+  /* Sidebar */
+  .sidebar { width: 220px; background-color: #eef0f2; padding: 1rem; border-right: 1px solid #ccc; overflow-y: auto; }
+  .sidebar h3 { margin-bottom: 1rem; text-align: center; }
+  .sidebar ul { list-style: none; padding-left: 0; }
+  .sidebar li { padding: 0.5rem 0; border-bottom: 1px solid #ccc; text-align: center; }
+  .hidden-user { display: none; }
+  .user-btn { background: none; border: none; cursor: pointer; font-size: 1rem; color: black; }
+  .user-btn:hover { text-decoration: underline; color: #353a41; }
+  .read-more-btn { background: none; border: none; cursor: pointer; font-size: 0.95rem; margin-top: 10px; color: #1b1f24; font-weight: bold; }
+  .read-more-btn:hover { text-decoration: underline; }
 
-/* Chat area */
-.chat-area {
-  flex:1;
-  display:flex;
-  flex-direction:column;
-}
-.chat-header {
-  padding:1rem;
-  border-bottom:1px solid #ccc;
-  background:#f0f0f0;
-}
-.messages {
-  flex:1;
-  padding:1rem;
-  overflow-y:auto;
-}
-.sent { text-align:right; margin:5px; }
-.received { text-align:left; margin:5px; }
-.msg {
-  display:inline-block;
-  padding:8px 12px;
-  border-radius:10px;
-  background:#e5e5e5;
-}
-.sent .msg { background:#dcf8c6; }
-
-.input-box {
-  display:flex;
-  padding:10px;
-  border-top:1px solid #ccc;
-}
-textarea {
-  flex:1;
-  resize:none;
-}
+  /* Main content */
+  .content { flex: 1; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; padding: 1rem; }
+  .chat-box { width: 100%; max-width: 500px; background-color: #eef0f2; border-radius: 1rem; box-shadow: 0px 0px 1rem 0px rgba(0,0,0,0.2); display: flex; flex-direction: column; height: 80vh; }
+  .chat-header { padding: 1rem; font-weight: bold; border-bottom: 1px solid #ccc; text-align: center; }
+  .messages { flex: 1; padding: 1rem; overflow-y: auto; }
+  .sent { text-align: right; margin: 5px; }
+  .received { text-align: left; margin: 5px; }
+  .msg { display: inline-block; padding: 8px 12px; border-radius: 10px; background: #dcf8c6; }
+  .received .msg { background: #fff; }
+  .input-box { display: flex; padding: 10px; border-top: 1px solid #ccc; }
+  textarea { flex: 1; border-radius: 5px; padding: 5px; resize: none; }
+  button.send-btn { padding: 0.5rem 1rem; margin-left: 0.5rem; border: none; background: #667eea; color: #fff; border-radius: 5px; cursor: pointer; }
 </style>
 </head>
-
 <body>
-<div class="container">
 
+<div class="page-container">
   <!-- Sidebar -->
   <div class="sidebar">
     <h3>Users</h3>
-    {% for u in users %}
-      <div class="user"
-           onclick="window.location='?user={{ u.username }}'">
-        {{ u.username }}
-      </div>
-    {% endfor %}
-  </div>
-
-  <!-- Chat -->
-  <div class="chat-area">
-    {% if selected_user %}
-      <div class="chat-header">
-        Chat with <b>{{ selected_user }}</b>
-      </div>
-
-      <div class="messages">
-        {% for m in messages %}
-          {% if m.sender == request.user.username %}
-            <div class="sent"><span class="msg">{{ m.message }}</span></div>
-          {% else %}
-            <div class="received"><span class="msg">{{ m.message }}</span></div>
-          {% endif %}
-        {% endfor %}
-      </div>
-
-      <div class="input-box">
-        <textarea placeholder="Type message..."></textarea>
-        <button>Send</button>
-      </div>
-    {% else %}
-      <div class="chat-header">
-        Select a user to start chatting
+    <ul id="userList">
+      {% for u in users %}
+        <li class="{% if forloop.counter > 5 %}hidden-user{% endif %}">
+          <button type="button" class="user-btn" data-username="{{ u.username }}" onclick="window.location='?user={{ u.username }}'">
+            {{ u.username }}
+          </button>
+        </li>
+      {% empty %}
+        <li>No other users</li>
+      {% endfor %}
+    </ul>
+    {% if users|length > 5 %}
+      <div style="text-align:center;">
+        <button class="read-more-btn" id="readMoreBtn" onclick="toggleUsers()">Read more</button>
       </div>
     {% endif %}
   </div>
 
+  <!-- Main content -->
+  <div class="content">
+    {% if selected_user %}
+      <div class="chat-box">
+        <div class="chat-header">Chat with {{ selected_user }}</div>
+        <div class="messages" id="chatMessages">
+          {% for m in messages %}
+            {% if m.sender == request.user.username %}
+              <div class="sent"><span class="msg">{{ m.message }}</span></div>
+            {% else %}
+              <div class="received"><span class="msg">{{ m.message }}</span></div>
+            {% endif %}
+          {% endfor %}
+        </div>
+        <form method="POST" class="input-box">
+          {% csrf_token %}
+          <textarea name="message" rows="2" placeholder="Type a message..." required></textarea>
+          <button type="submit" class="send-btn">Send</button>
+        </form>
+      </div>
+    {% else %}
+      <div class="chat-box">
+        <div class="chat-header">Select a user to start chatting</div>
+      </div>
+    {% endif %}
+  </div>
 </div>
+
+<script>
+function toggleUsers() {
+  const hiddenUsers = document.querySelectorAll(".hidden-user");
+  const btn = document.getElementById("readMoreBtn");
+  hiddenUsers.forEach(user => {
+    user.style.display = user.style.display === "none" || user.style.display === "" ? "list-item" : "none";
+  });
+  btn.innerText = btn.innerText === "Read more" ? "Read less" : "Read more";
+}
+
+// Scroll to bottom of messages
+const chatMessages = document.getElementById('chatMessages');
+if(chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
+</script>
+
 </body>
 </html>

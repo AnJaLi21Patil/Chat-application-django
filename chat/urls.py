@@ -16,6 +16,6 @@ from .views import HomeView, login_page, RoomView, register_page
 urlpatterns = [
     path('', login_page, name='login'),
     path('home/', HomeView, name='home'),
-    # path('room/<str:username>/', RoomView, name='room'),  # Only username needed
+    path('room/<str:username>/', RoomView, name='room'),  # Only username needed
     path('register/', register_page, name='register'),
 ]
