@@ -1,55 +1,154 @@
+# from django.shortcuts import render, redirect
+# from .models import Room, Message
+# from django.contrib.auth.decorators import login_required
+# from rest_framework.views import APIView
+# from rest_framework.response import Response
+# from rest_framework.permissions import AllowAny
+# from .serializers import RegisterSerializer
+# from rest_framework import status
+# from django.views.decorators.csrf import csrf_exempt
+# from django.contrib import messages
+# from django.shortcuts import redirect, render
+# from django.views.decorators.csrf import csrf_exempt
+# from django.shortcuts import render, redirect
+# from django.contrib.auth import authenticate, login
+# from django.contrib.auth.decorators import login_required
+# from django.contrib import messages
+
+
+
+# @login_required
+# def HomeView(request):
+#     if request.method == "POST":
+#         username = request.POST.get("username", "").strip() or "Anonymous"
+#         room = request.POST.get("room", "").strip()
+
+#         Room.objects.get_or_create(
+#             room_name__iexact=room,
+#             defaults={"room_name": room}
+#         )
+
+#         return redirect("room", room_name=room, username=username)
+
+#     # ✅ USE sender FIELD (NOT username)
+#     users = (
+#         Message.objects
+#         .select_related("room")
+#         .values("sender", "room__room_name")
+#         .distinct()
+#     )
+
+#     return render(request, "home.html", {"users": users})
+
+
+# def RoomView(request, room_name, username):
+#     existing_room = Room.objects.get(room_name__icontains=room_name)
+#     get_messages = Message.objects.filter(room=existing_room)
+#     context = {
+#         "messages": get_messages,
+#         "user": username,
+#         "room_name": existing_room.room_name,
+#     }
+
+#     return render(request, "room.html", context)
+
+
+# def login_page(request):
+#     if request.method == "POST":
+#         username = request.POST.get("username")
+#         password = request.POST.get("password")
+#         user = authenticate(request, username=username, password=password)
+#         if user is not None:
+#             login(request, user)
+#             return redirect("home")  # use the URL name for HomeView
+#         else:
+#             messages.error(request, "Invalid username or password")
+#     return render(request, "login.html")
+
+
+
+# class RegisterView(APIView):
+#     permission_classes = [AllowAny]
+
+#     def post(self, request):
+#         serializer = RegisterSerializer(data=request.data)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response({"message": "User registered successfully"}, status=status.HTTP_201_CREATED)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# @csrf_exempt
+# def register_page(request):
+#     if request.method == "GET":
+#         return render(request, "register.html")
+
+#     if request.method == "POST":
+#         response = RegisterView.as_view()(request)
+
+#         # If registration successful
+#         if response.status_code == 201:
+#             messages.success(request, "Registration successful. Please login.")
+#             return redirect("login")
+
+#         # If error, show form again with error
+#         messages.error(request, "Registration failed. Try again.")
+#         return redirect("register")
 from django.shortcuts import render, redirect
-from .models import Room, Message
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth import authenticate, login
+from django.contrib import messages
+from .models import Room, Message
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from .serializers import RegisterSerializer
 from rest_framework import status
 from django.views.decorators.csrf import csrf_exempt
-from django.contrib import messages
-from django.shortcuts import redirect, render
-from django.views.decorators.csrf import csrf_exempt
-from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-
 
 
 @login_required
 def HomeView(request):
-    if request.method == "POST":
-        username = request.POST.get("username", "").strip() or "Anonymous"
-        room = request.POST.get("room", "").strip()
+    from django.contrib.auth.models import User
 
-        Room.objects.get_or_create(
-            room_name__iexact=room,
-            defaults={"room_name": room}
-        )
+    users = User.objects.exclude(username=request.user.username)
 
-        return redirect("room", room_name=room, username=username)
+    selected_user = request.GET.get("user")
+    messages = []
+    room_name = None
 
-    # ✅ USE sender FIELD (NOT username)
-    users = (
-        Message.objects
-        .select_related("room")
-        .values("sender", "room__room_name")
-        .distinct()
-    )
+    if selected_user:
+        current_user = request.user.username
+        room_name = "_".join(sorted([current_user, selected_user]))
+        room, _ = Room.objects.get_or_create(room_name=room_name)
+        messages = Message.objects.filter(room=room).order_by("timestamp")
 
-    return render(request, "home.html", {"users": users})
-
-
-def RoomView(request, room_name, username):
-    existing_room = Room.objects.get(room_name__icontains=room_name)
-    get_messages = Message.objects.filter(room=existing_room)
     context = {
-        "messages": get_messages,
-        "user": username,
-        "room_name": existing_room.room_name,
+        "users": users,
+        "messages": messages,
+        "selected_user": selected_user,
+        "room_name": room_name,
     }
+    return render(request, "home.html", context)
 
+
+@login_required
+def RoomView(request, username):
+    current_user = request.user.username
+    other_user = username
+
+    # Unique room name per user pair
+    room_name = "_".join(sorted([current_user, other_user]))
+    room, _ = Room.objects.get_or_create(room_name=room_name)
+
+    messages_in_room = Message.objects.filter(room=room).order_by("timestamp")
+
+    context = {
+        "messages": messages_in_room,
+        "user": current_user,
+        "room_name": room_name,
+        "other_user": other_user
+    }
     return render(request, "room.html", context)
 
 
@@ -58,13 +157,12 @@ def login_page(request):
         username = request.POST.get("username")
         password = request.POST.get("password")
         user = authenticate(request, username=username, password=password)
-        if user is not None:
+        if user:
             login(request, user)
-            return redirect("home")  # use the URL name for HomeView
+            return redirect("home")
         else:
             messages.error(request, "Invalid username or password")
     return render(request, "login.html")
-
 
 
 class RegisterView(APIView):
@@ -85,12 +183,8 @@ def register_page(request):
 
     if request.method == "POST":
         response = RegisterView.as_view()(request)
-
-        # If registration successful
         if response.status_code == 201:
             messages.success(request, "Registration successful. Please login.")
             return redirect("login")
-
-        # If error, show form again with error
         messages.error(request, "Registration failed. Try again.")
         return redirect("register")
