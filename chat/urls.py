@@ -18,4 +18,5 @@ urlpatterns = [
     path('home/', HomeView, name='home'),
     path('room/<str:username>/', RoomView, name='room'),  # Only username needed
     path('register/', register_page, name='register'),
+    
 ]
