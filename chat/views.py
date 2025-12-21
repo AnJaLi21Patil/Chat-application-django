@@ -193,10 +193,10 @@ from .models import Room, Message
 #         "messages": messages_in_room,
 #         "users": users,
 #     })
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
-from .models import Room, Message
-from django.contrib.auth.models import User
+# from django.contrib.auth.decorators import login_required
+# from django.shortcuts import render
+# from .models import Room, Message
+# from django.contrib.auth.models import User
 
 @login_required
 def RoomView(request, username):
@@ -217,6 +217,30 @@ def RoomView(request, username):
         "messages": messages_in_room,
         "users": users,
     })
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 def login_page(request):
     if request.method == "POST":

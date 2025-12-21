@@ -44,16 +44,179 @@
 #                 room=get_room, message=data["message"], sender=data["sender"]
 #             )
 
+# import json
+# from channels.generic.websocket import AsyncWebsocketConsumer
+# from channels.db import database_sync_to_async
+# from .models import Room, Message
+
+# class ChatConsumer(AsyncWebsocketConsumer):
+#     async def connect(self):
+#         self.room_name = self.scope['url_route']['kwargs']['room_name']
+#         self.group_name = f"chat_{self.room_name}"
+
+#         await self.channel_layer.group_add(
+#             self.group_name,
+#             self.channel_name
+#         )
+
+#         await self.accept()
+
+#     async def disconnect(self, code):
+#         await self.channel_layer.group_discard(
+#             self.group_name,
+#             self.channel_name
+#         )
+
+#     async def receive(self, text_data):
+#         data = json.loads(text_data)
+#         message = data['message']
+#         sender = data['sender']
+
+#         # Save message in DB
+#         await self.save_message(sender, self.room_name, message)
+
+#         # Send message to group
+#         await self.channel_layer.group_send(
+#             self.group_name,
+#             {
+#                 'type': 'chat_message',
+#                 'message': message,
+#                 'sender': sender,
+#             }
+#         )
+
+#     async def chat_message(self, event):
+#         await self.send(text_data=json.dumps({
+#             'message': event['message'],
+#             'sender': event['sender'],
+#         }))
+
+
+#     async def send_message(self, event):
+#         data = event["message"]
+#         await self.create_message(data=data)
+
+#         # Send flat data, not nested
+#         await self.send(text_data=json.dumps({
+#             "message": data["message"],
+#             "sender": data["sender"],
+#         }))
+
+
+#     @database_sync_to_async
+#     def save_message(self, sender, room_name, message):
+#         room, _ = Room.objects.get_or_create(room_name=room_name)
+#         Message.objects.create(room=room, sender=sender, message=message)
+
+# import json
+# from channels.generic.websocket import AsyncWebsocketConsumer
+# from channels.db import database_sync_to_async
+# from .models import Room, Message
+
+# class ChatConsumer(AsyncWebsocketConsumer):
+
+#     async def connect(self):
+#         self.room_name = self.scope['url_route']['kwargs']['room_name']
+#         self.group_name = f"chat_{self.room_name}"
+
+#         self.user = self.scope["user"]
+#         self.user_group = f"user_{self.user.username}"
+
+#         # Join room group
+#         await self.channel_layer.group_add(
+#             self.group_name,
+#             self.channel_name
+#         )
+
+#         # Join user notification group
+#         await self.channel_layer.group_add(
+#             self.user_group,
+#             self.channel_name
+#         )
+
+#         await self.accept()
+
+#     async def disconnect(self, close_code):
+#         await self.channel_layer.group_discard(self.group_name, self.channel_name)
+#         await self.channel_layer.group_discard(self.user_group, self.channel_name)
+
+#     async def receive(self, text_data):
+#         data = json.loads(text_data)
+
+#         message = data["message"]
+#         sender = data["sender"]
+#         receiver = data["receiver"]
+
+#         # Save message
+#         await self.save_message(sender, receiver, self.room_name, message)
+
+#         # Send chat message to room
+#         await self.channel_layer.group_send(
+#             self.group_name,
+#             {
+#                 "type": "chat_message",
+#                 "message": message,
+#                 "sender": sender,
+#             }
+#         )
+
+#         # 🔔 Send notification to receiver
+#         await self.channel_layer.group_send(
+#             f"user_{receiver}",
+#             {
+#                 "type": "notify",
+#                 "sender": sender,
+#                 "message": message,
+#             }
+#         )
+
+#     async def chat_message(self, event):
+#         await self.send(text_data=json.dumps({
+#             "type": "chat",
+#             "sender": event["sender"],
+#             "message": event["message"],
+#         }))
+
+#     async def notify(self, event):
+#         await self.send(text_data=json.dumps({
+#             "type": "notification",
+#             "text": f"{event['sender']} sent you a message",
+#             "sender": event["sender"],
+#             "message": event["message"],
+#         }))
+
+#     @database_sync_to_async
+#     def save_message(self, sender, receiver, room_name, message):
+#         room, _ = Room.objects.get_or_create(room_name=room_name)
+#         Message.objects.create(
+#             room=room,
+#             sender=sender,
+#             receiver=receiver,
+#             message=message
+#         )
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from .models import Room, Message
 
 class ChatConsumer(AsyncWebsocketConsumer):
-    async def connect(self):
-        self.room_name = self.scope['url_route']['kwargs']['room_name']
-        self.group_name = f"chat_{self.room_name}"
 
+    async def connect(self):
+        # Determine type of connection: chat room or notification
+        self.room_name = self.scope['url_route']['kwargs'].get('room_name', None)
+        self.username = self.scope['url_route']['kwargs'].get('username', None)
+
+        if self.room_name:
+            # Chat room connection
+            self.group_name = f"chat_{self.room_name}"
+        elif self.username:
+            # Notification connection
+            self.group_name = f"user_{self.username}"
+        else:
+            await self.close()
+            return
+
+        # Join the group
         await self.channel_layer.group_add(
             self.group_name,
             self.channel_name
@@ -61,50 +224,64 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         await self.accept()
 
-    async def disconnect(self, code):
-        await self.channel_layer.group_discard(
-            self.group_name,
-            self.channel_name
-        )
+    async def disconnect(self, close_code):
+        if hasattr(self, "group_name"):
+            await self.channel_layer.group_discard(
+                self.group_name,
+                self.channel_name
+            )
 
     async def receive(self, text_data):
         data = json.loads(text_data)
-        message = data['message']
-        sender = data['sender']
+        message = data["message"]
+        sender = data["sender"]
+        receiver = data.get("receiver")
+        room_name = data.get("room_name")
 
-        # Save message in DB
-        await self.save_message(sender, self.room_name, message)
+        # Save message
+        await self.save_message(sender, receiver, room_name, message)
 
-        # Send message to group
+        # Send to room group
         await self.channel_layer.group_send(
-            self.group_name,
+            f"chat_{room_name}",
             {
-                'type': 'chat_message',
-                'message': message,
-                'sender': sender,
+                "type": "chat_message",
+                "message": message,
+                "sender": sender,
+            }
+        )
+
+        # Send notification to receiver
+        await self.channel_layer.group_send(
+            f"user_{receiver}",
+            {
+                "type": "notify",
+                "sender": sender,
+                "message": message,
             }
         )
 
     async def chat_message(self, event):
         await self.send(text_data=json.dumps({
-            'message': event['message'],
-            'sender': event['sender'],
+            "type": "chat",
+            "sender": event["sender"],
+            "message": event["message"],
         }))
 
-
-    async def send_message(self, event):
-        data = event["message"]
-        await self.create_message(data=data)
-
-        # Send flat data, not nested
+    async def notify(self, event):
         await self.send(text_data=json.dumps({
-            "message": data["message"],
-            "sender": data["sender"],
+            "type": "notification",
+            "text": f"{event['sender']} sent you a message",
+            "sender": event["sender"],
+            "message": event["message"],
         }))
-
 
     @database_sync_to_async
-    def save_message(self, sender, room_name, message):
+    def save_message(self, sender, receiver, room_name, message):
         room, _ = Room.objects.get_or_create(room_name=room_name)
-        Message.objects.create(room=room, sender=sender, message=message)
-
+        Message.objects.create(
+            room=room,
+            sender=sender,
+            receiver=receiver,
+            message=message
+        )

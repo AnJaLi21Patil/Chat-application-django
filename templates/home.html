@@ -299,11 +299,10 @@
             {% endif %}
           {% endfor %}
         </div>
-        <form method="POST" class="input-box">
-          {% csrf_token %}
-          <textarea name="message" rows="2" placeholder="Type a message..." required></textarea>
-          <button type="submit" class="send-btn">Send</button>
-        </form>
+<div class="input-box">
+  <textarea id="messageInput" rows="2" placeholder="Type a message..."></textarea>
+  <button type="button" id="sendBtn" class="send-btn">Send</button>
+</div>
       </div>
     {% else %}
       <div class="chat-box">
@@ -314,18 +313,54 @@
 </div>
 
 <script>
-function toggleUsers() {
-  const hiddenUsers = document.querySelectorAll(".hidden-user");
-  const btn = document.getElementById("readMoreBtn");
-  hiddenUsers.forEach(user => {
-    user.style.display = user.style.display === "none" || user.style.display === "" ? "list-item" : "none";
-  });
-  btn.innerText = btn.innerText === "Read more" ? "Read less" : "Read more";
-}
+const currentUser = "{{ request.user.username }}";
+const selectedUser = "{{ selected_user }}";
+const roomName = "{{ room_name }}";
 
-// Scroll to bottom of messages
-const chatMessages = document.getElementById('chatMessages');
-if(chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
+// --- CHAT SOCKET ---
+const chatSocket = new WebSocket(
+    "ws://" + window.location.host + "/ws/chat/room/" + roomName + "/"
+);
+
+chatSocket.onmessage = function(e) {
+    const data = JSON.parse(e.data);
+    if(data.type === "chat") {
+        const div = document.createElement("div");
+        div.className = data.sender === currentUser ? "sent" : "received";
+        div.innerHTML = `<span class="msg">${data.message}</span>`;
+        document.getElementById("chatMessages").appendChild(div);
+        document.getElementById("chatMessages").scrollTop = document.getElementById("chatMessages").scrollHeight;
+    }
+};
+
+// Send message
+document.getElementById("sendBtn").onclick = () => {
+    const msgInput = document.getElementById("messageInput");
+    const msg = msgInput.value.trim();
+    if(!msg) return;
+
+    chatSocket.send(JSON.stringify({
+        sender: currentUser,
+        receiver: selectedUser,
+        message: msg,
+        room_name: roomName
+    }));
+
+    msgInput.value = "";
+};
+
+// --- NOTIFICATION SOCKET ---
+const notifySocket = new WebSocket(
+    "ws://" + window.location.host + "/ws/chat/notify/" + currentUser + "/"
+);
+
+notifySocket.onmessage = function(e) {
+    const data = JSON.parse(e.data);
+    if(data.type === "notification") {
+        // Replace alert with your preferred notification UI
+        alert(data.text);
+    }
+};
 </script>
 
 </body>
