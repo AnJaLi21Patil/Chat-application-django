@@ -111,10 +111,13 @@ from .models import Room, Message
 
 
 
+from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
+from .models import Room, Message
+
 @login_required
 def HomeView(request):
-    from django.contrib.auth.models import User
-
     users = User.objects.exclude(username=request.user.username)
     selected_user = request.GET.get("user")
     messages_list = []
@@ -124,24 +127,14 @@ def HomeView(request):
         current_user = request.user.username
         room_name = "_".join(sorted([current_user, selected_user]))
         room, _ = Room.objects.get_or_create(room_name=room_name)
-
-        # Handle POST to save message
-        if request.method == "POST":
-            msg_text = request.POST.get("message", "").strip()
-            if msg_text:
-                Message.objects.create(room=room, sender=current_user, message=msg_text)
-            return redirect(f"/home/?user={selected_user}")  # reload page
-
         messages_list = Message.objects.filter(room=room).order_by("timestamp")
 
-    context = {
+    return render(request, "room.html", {
         "users": users,
         "selected_user": selected_user,
         "messages": messages_list,
         "room_name": room_name,
-    }
-    return render(request, "home.html", context)
-
+    })
 
 # @login_required
 # def RoomView(request, username):
