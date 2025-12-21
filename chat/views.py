@@ -105,6 +105,10 @@ from rest_framework.permissions import AllowAny
 from .serializers import RegisterSerializer
 from rest_framework import status
 from django.views.decorators.csrf import csrf_exempt
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from .models import Room, Message
+
 
 
 @login_required
@@ -113,22 +117,28 @@ def HomeView(request):
 
     users = User.objects.exclude(username=request.user.username)
     selected_user = request.GET.get("user")
-    messages = []
+    messages_list = []
     room_name = None
 
     if selected_user:
         current_user = request.user.username
-        # Unique room name per user pair
         room_name = "_".join(sorted([current_user, selected_user]))
         room, _ = Room.objects.get_or_create(room_name=room_name)
-        messages = Message.objects.filter(room=room).order_by("timestamp")
+
+        # Handle POST to save message
+        if request.method == "POST":
+            msg_text = request.POST.get("message", "").strip()
+            if msg_text:
+                Message.objects.create(room=room, sender=current_user, message=msg_text)
+            return redirect(f"/home/?user={selected_user}")  # reload page
+
+        messages_list = Message.objects.filter(room=room).order_by("timestamp")
 
     context = {
         "users": users,
         "selected_user": selected_user,
-        "messages": messages,
+        "messages": messages_list,
         "room_name": room_name,
-        "user": request.user.username,
     }
     return render(request, "home.html", context)
 
@@ -153,6 +163,8 @@ def HomeView(request):
 #     return render(request, "room.html", context)
 
 
+
+# @login_required
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from .models import Room, Message
@@ -162,10 +174,11 @@ def RoomView(request, username):
     current_user = request.user.username
     other_user = username
 
-    # Unique room name per user pair
+    # Create a unique room name for this user pair
     room_name = "_".join(sorted([current_user, other_user]))
     room, _ = Room.objects.get_or_create(room_name=room_name)
 
+    # Handle message submission
     if request.method == "POST":
         message_text = request.POST.get("message", "").strip()
         if message_text:
@@ -174,16 +187,20 @@ def RoomView(request, username):
                 sender=current_user,
                 message=message_text
             )
+            print(f"[{room_name}] {current_user} -> {other_user}: {message_text}")
+        # Redirect to same room after sending message
         return redirect("room", username=other_user)
 
+    # Fetch all messages in this room
     messages_in_room = Message.objects.filter(room=room).order_by("timestamp")
 
     context = {
         "messages": messages_in_room,
-        "user": current_user,
-        "other_user": other_user,
+        "user": current_user,          # for identifying "Me"
+        "other_user": other_user,      # for displaying other user
         "room_name": room_name,
     }
+
     return render(request, "room.html", context)
 
 def login_page(request):

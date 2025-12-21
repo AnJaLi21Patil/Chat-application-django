@@ -307,7 +307,7 @@
 </body>
 
 </html> {% endcomment %}
-<!DOCTYPE html>
+{% comment %} <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -367,6 +367,60 @@ form.addEventListener('submit', () => {
         chatsContainer.scrollTop = chatsContainer.scrollHeight;
     }, 100); // allow Django reload
 });
+</script>
+
+</body>
+</html> {% endcomment %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chat with {{ other_user }}</title>
+<style>
+body { font-family: Arial, sans-serif; margin:0; padding:0; background:#f0f0f0; }
+.page-container { display:flex; justify-content:center; align-items:center; height:100vh; }
+.content { width:400px; height:600px; background:#fff; border-radius:10px; display:flex; flex-direction:column; padding:1rem; }
+.chats-container { flex:1; overflow-y:auto; margin-bottom:1rem; padding-right:0.5rem; }
+.single-message { margin-bottom:0.5rem; max-width:70%; padding:0.5rem; border-radius:5px; word-wrap:break-word; }
+.sent { background:#8c00ff; color:#fff; margin-left:auto; }
+.received { background:#ff7300; color:#fff; margin-right:auto; }
+.sender-name { font-size:0.75rem; margin-bottom:0.2rem; }
+form { display:flex; width:100%; }
+textarea { flex:1; padding:0.5rem; border-radius:5px; border:1px solid #ccc; resize:none; }
+button { padding:0.5rem 1rem; margin-left:0.5rem; border:none; background:#667eea; color:#fff; border-radius:5px; cursor:pointer; }
+</style>
+</head>
+<body>
+
+<div class="page-container">
+  <div class="content">
+    <h3>Chat with {{ other_user }}</h3>
+
+    <div class="chats-container" id="chats-container">
+      {% for message in messages %}
+        {% if message.sender == user %}
+          <div class="sender-name">Me</div>
+          <div class="single-message sent">{{ message.message }}</div>
+        {% else %}
+          <div class="sender-name">{{ message.sender }}</div>
+          <div class="single-message received">{{ message.message }}</div>
+        {% endif %}
+      {% endfor %}
+    </div>
+
+    <form method="POST" action="">
+      {% csrf_token %}
+      <textarea name="message" rows="2" placeholder="Type a message..." required></textarea>
+      <button type="submit">Send</button>
+    </form>
+  </div>
+</div>
+
+<script>
+// Auto-scroll to bottom on page load
+const chatsContainer = document.getElementById("chats-container");
+chatsContainer.scrollTop = chatsContainer.scrollHeight;
 </script>
 
 </body>
