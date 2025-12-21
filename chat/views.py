@@ -169,39 +169,61 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from .models import Room, Message
 
+# from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
+from .models import Room, Message
+
+# @login_required
+# def RoomView(request, username):
+#     current_user = request.user.username
+#     other_user = username
+
+#     # Unique room name
+#     room_name = "_".join(sorted([current_user, other_user]))
+#     room, _ = Room.objects.get_or_create(room_name=room_name)
+
+#     # Handle message submission
+#     if request.method == "POST":
+#         message_text = request.POST.get("message", "").strip()
+#         if message_text:
+#             Message.objects.create(room=room, sender=current_user, message=message_text)
+#         return redirect("room", username=other_user)
+
+#     # Fetch messages
+#     messages_in_room = Message.objects.filter(room=room).order_by("timestamp")
+#     users = User.objects.exclude(username=current_user)
+
+#     return render(request, "room.html", {
+#         "selected_user": other_user,
+#         "room_name": room_name,
+#         "messages": messages_in_room,
+#         "users": users,
+#     })
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+from .models import Room, Message
+from django.contrib.auth.models import User
+
 @login_required
 def RoomView(request, username):
     current_user = request.user.username
     other_user = username
 
-    # Create a unique room name for this user pair
+    # Unique room name
     room_name = "_".join(sorted([current_user, other_user]))
     room, _ = Room.objects.get_or_create(room_name=room_name)
 
-    # Handle message submission
-    if request.method == "POST":
-        message_text = request.POST.get("message", "").strip()
-        if message_text:
-            Message.objects.create(
-                room=room,
-                sender=current_user,
-                message=message_text
-            )
-            print(f"[{room_name}] {current_user} -> {other_user}: {message_text}")
-        # Redirect to same room after sending message
-        return redirect("room", username=other_user)
-
-    # Fetch all messages in this room
+    # Fetch messages
     messages_in_room = Message.objects.filter(room=room).order_by("timestamp")
+    users = User.objects.exclude(username=current_user)
 
-    context = {
-        "messages": messages_in_room,
-        "user": current_user,          # for identifying "Me"
-        "other_user": other_user,      # for displaying other user
+    return render(request, "room.html", {
+        "selected_user": other_user,
         "room_name": room_name,
-    }
-
-    return render(request, "room.html", context)
+        "messages": messages_in_room,
+        "users": users,
+    })
 
 def login_page(request):
     if request.method == "POST":
