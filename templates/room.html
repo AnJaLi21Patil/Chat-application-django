@@ -1443,7 +1443,7 @@ if(roomName){
 </html> {% endcomment %}
 
 
-<!DOCTYPE html>
+{% comment %} <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -1645,6 +1645,269 @@ if(roomName){
     }));
 
     input.value = ""; // <- removed appendMessage here to prevent duplicate
+  };
+
+  // Press Enter to send
+  document.getElementById("messageInput").addEventListener("keydown", function(e){
+    if(e.key === "Enter" && !e.shiftKey){
+      e.preventDefault();
+      document.getElementById("sendBtn").click();
+    }
+  });
+}
+</script>
+
+</body>
+</html> {% endcomment %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chat</title>
+<style>
+body { margin:0; font-family:Arial; background:#f0f0f0; }
+.page-container { display:flex; height:100vh; }
+
+.sidebar {
+  width:220px;
+  background:#eef0f2;
+  padding:1rem;
+  overflow-y:auto;
+}
+.sidebar h3 { text-align:center; }
+.sidebar ul { list-style:none; padding:0; }
+.sidebar li { padding:6px 0; text-align:center; display:flex; justify-content:space-between; align-items:center; }
+
+.user-btn {
+  background:none;
+  border:none;
+  cursor:pointer;
+  font-size:15px;
+  flex:1;
+  text-align:left;
+}
+.user-btn:hover { text-decoration:underline; }
+
+.unread {
+  background:#e74c3c;
+  color:white;
+  border-radius:50%;
+  padding:2px 6px;
+  font-size:12px;
+  display:none;
+}
+
+.content {
+  flex:1;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+.chat-box {
+  width:100%;
+  max-width:500px;
+  height:80vh;
+  background:#eef0f2;
+  border-radius:1rem;
+  display:flex;
+  flex-direction:column;
+}
+.chat-header {
+  padding:1rem;
+  font-weight:bold;
+  text-align:center;
+  border-bottom:1px solid #ccc;
+}
+.messages {
+  flex:1;
+  padding:1rem;
+  overflow-y:auto;
+}
+.sent { text-align:right; }
+.received { text-align:left; }
+.msg {
+  padding:8px 12px;
+  border-radius:10px;
+  background:#dcf8c6;
+  display:inline-block;
+  margin:4px;
+}
+.received .msg { background:#fff; }
+
+.input-box {
+  display:flex;
+  padding:10px;
+  border-top:1px solid #ccc;
+}
+textarea { flex:1; resize:none; }
+.send-btn {
+  margin-left:5px;
+  padding:6px 12px;
+  border:none;
+  background:#667eea;
+  color:white;
+  border-radius:5px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="page-container">
+
+  <!-- USERS -->
+  <div class="sidebar">
+    <h3>Users</h3>
+    <ul id="userList">
+      {% for u in users %}
+      <li data-user="{{ u.username }}">
+        <button class="user-btn" onclick="selectUser('{{ u.username }}')">
+          {{ u.username }}
+        </button>
+        <span class="unread" id="unread-{{ u.username }}">0</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <!-- CHAT -->
+  <div class="content">
+    {% if selected_user %}
+    <div class="chat-box">
+      <div class="chat-header">Chat with {{ selected_user }}</div>
+
+      <div class="messages" id="chatMessages">
+        {% for m in messages %}
+          {% if m.sender == request.user.username %}
+            <div class="sent"><span class="msg">{{ m.message }}</span></div>
+          {% else %}
+            <div class="received"><span class="msg">{{ m.message }}</span></div>
+          {% endif %}
+        {% endfor %}
+      </div>
+
+      <div class="input-box">
+        <textarea id="messageInput" rows="2"></textarea>
+        <button id="sendBtn" class="send-btn">Send</button>
+      </div>
+    </div>
+    {% else %}
+    <div class="chat-box">
+      <div class="chat-header">Select user</div>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<script>
+const username = "{{ request.user.username }}";
+const receiver = "{{ selected_user }}";
+const roomName = "{{ room_name }}";
+const userList = document.getElementById("userList");
+const chatMessages = document.getElementById("chatMessages");
+
+/* ✅ ADD: track last sent message to avoid duplicate echo */
+let lastSentMessage = null;
+
+/* ===== RESTORE ORDER (TOP FIRST) ===== */
+document.addEventListener("DOMContentLoaded", () => {
+  const order = JSON.parse(localStorage.getItem("chatOrder") || "[]");
+  order.slice().reverse().forEach(u => {
+    const li = document.querySelector(`li[data-user="${u}"]`);
+    if (li) userList.prepend(li);
+  });
+});
+
+/* ===== MOVE USER TO TOP ===== */
+function moveUserToTop(user){
+  const li = document.querySelector(`li[data-user="${user}"]`);
+  if (!li) return;
+
+  userList.prepend(li);
+
+  let order = JSON.parse(localStorage.getItem("chatOrder") || "[]");
+  order = order.filter(u => u !== user);
+  order.unshift(user);
+  localStorage.setItem("chatOrder", JSON.stringify(order));
+}
+
+/* ===== CLICK USER ===== */
+function selectUser(user){
+  moveUserToTop(user);
+
+  // Reset unread count when opening chat
+  const unreadSpan = document.getElementById("unread-" + user);
+  if(unreadSpan){
+    unreadSpan.style.display = "none";
+    unreadSpan.textContent = "0";
+  }
+
+  window.location = "?user=" + user;
+}
+
+/* ===== SOCKET ===== */
+if(roomName){
+  const socket = new WebSocket(
+    "ws://" + window.location.host + "/ws/chat/" + roomName + "/"
+  );
+
+  function appendMessage(sender, msg){
+    const div = document.createElement("div");
+    div.className = sender === username ? "sent" : "received";
+    div.innerHTML = `<span class="msg">${msg}</span>`;
+    chatMessages.appendChild(div);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+
+  // Receive messages
+  socket.onmessage = function(e){
+    const data = JSON.parse(e.data);
+
+    if(data.type === "chat"){
+
+      /* ✅ ADD: prevent duplicate message echo */
+      if(data.sender === username && data.message === lastSentMessage){
+        lastSentMessage = null;
+        return;
+      }
+
+      appendMessage(data.sender, data.message);
+
+      // Show unread count if not active chat
+      if(data.sender !== username && receiver !== data.sender){
+        const unreadSpan = document.getElementById("unread-" + data.sender);
+        if(unreadSpan){
+          let count = parseInt(unreadSpan.textContent) || 0;
+          count += 1;
+          unreadSpan.textContent = count;
+          unreadSpan.style.display = "inline-block";
+        }
+      }
+
+      moveUserToTop(data.sender === username ? receiver : data.sender);
+    }
+  };
+
+  // Send messages
+  document.getElementById("sendBtn").onclick = () => {
+    const input = document.getElementById("messageInput");
+    const msg = input.value.trim();
+    if(!msg) return;
+
+    /* ✅ ADD: store last sent message */
+    lastSentMessage = msg;
+
+    socket.send(JSON.stringify({
+      type: "chat",
+      sender: username,
+      receiver: receiver,
+      message: msg,
+      room_name: roomName
+    }));
+
+    appendMessage(username, msg); // show message immediately
+    input.value="";
   };
 
   // Press Enter to send

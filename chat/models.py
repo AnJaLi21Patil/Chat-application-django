@@ -18,7 +18,6 @@ class Message(models.Model):
     receiver = models.CharField(max_length=50)  # <-- add this
 
 
-
     
 
     def __str__(self):
