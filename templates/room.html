@@ -922,7 +922,7 @@ chatSocket.onmessage = function (e) {
 
 </body>
 </html> {% endcomment %}
-<!DOCTYPE html>
+{% comment %} <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -1060,6 +1060,601 @@ chatSocket.onmessage = function(e){
 
 // Scroll to bottom on load
 if(chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
+</script>
+
+</body>
+</html> {% endcomment %}
+{% comment %} <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chat</title>
+
+<style>
+body { font-family: Arial; margin:0; background:#f0f0f0; }
+.page-container { display:flex; height:100vh; }
+
+/* Sidebar */
+.sidebar { width:260px; background:#fff; border-right:1px solid #ddd; overflow-y:auto; }
+.user-item {
+  padding:12px;
+  cursor:pointer;
+  border-bottom:1px solid #eee;
+  display:flex;
+  justify-content:space-between;
+}
+.user-item:hover { background:#f5f5f5; }
+.username { font-weight:bold; }
+.time { font-size:12px; color:gray; }
+
+/* Chat */
+.content { flex:1; display:flex; justify-content:center; align-items:center; }
+.chat-box { width:100%; max-width:500px; height:85vh; background:#e5ddd5; display:flex; flex-direction:column; }
+.chat-header { padding:12px; background:#075e54; color:white; font-weight:bold; }
+.messages { flex:1; padding:10px; overflow-y:auto; }
+.sent { text-align:right; margin:5px; }
+.received { text-align:left; margin:5px; }
+.msg { display:inline-block; padding:8px 12px; border-radius:10px; background:#dcf8c6; }
+.received .msg { background:#fff; }
+.input-box { display:flex; padding:10px; background:#f0f0f0; }
+textarea { flex:1; resize:none; }
+button { margin-left:5px; }
+</style>
+</head>
+
+<body>
+
+<div class="page-container">
+
+<!-- USERS -->
+<div class="sidebar" id="userList">
+  {% for u in users %}
+  <div class="user-item" data-user="{{ u.username }}" onclick="selectUser('{{ u.username }}')">
+    <span class="username">{{ u.username }}</span>
+    <span class="time" id="time-{{ u.username }}">--:--</span>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- CHAT -->
+<div class="content">
+{% if selected_user %}
+<div class="chat-box">
+  <div class="chat-header">Chat with {{ selected_user }}</div>
+
+  <div class="messages" id="chatMessages">
+    {% for m in messages %}
+      <div class="{% if m.sender == request.user.username %}sent{% else %}received{% endif %}">
+        <span class="msg">{{ m.message }}</span>
+      </div>
+    {% endfor %}
+  </div>
+
+  <div class="input-box">
+    <textarea id="messageInput" rows="2"></textarea>
+    <button id="sendBtn">Send</button>
+  </div>
+</div>
+{% else %}
+<h3>Select a user to start chat</h3>
+{% endif %}
+</div>
+
+</div>
+
+<script>
+const roomName = "{{ room_name }}";
+const username = "{{ request.user.username }}";
+const receiver = "{{ selected_user }}";
+const socket = roomName ? new WebSocket(
+  "ws://" + window.location.host + "/ws/chat/" + roomName + "/"
+) : null;
+
+function selectUser(user){
+  window.location = "?user=" + user;
+}
+
+/* Move user to top */
+function moveUserToTop(user){
+  const list = document.getElementById("userList");
+  const item = document.querySelector(`[data-user='${user}']`);
+  if(item) list.prepend(item);
+}
+
+/* Update time */
+function updateTime(user){
+  const timeSpan = document.getElementById("time-" + user);
+  if(timeSpan){
+    const now = new Date();
+    timeSpan.innerText =
+      now.getHours().toString().padStart(2,"0") + ":" +
+      now.getMinutes().toString().padStart(2,"0");
+  }
+}
+
+if(socket){
+  document.getElementById("sendBtn").onclick = () => {
+    const input = document.getElementById("messageInput");
+    const msg = input.value.trim();
+    if(!msg) return;
+
+    socket.send(JSON.stringify({
+      sender: username,
+      receiver: receiver,
+      message: msg,
+      room_name: roomName
+    }));
+
+    input.value = "";
+    moveUserToTop(receiver);
+    updateTime(receiver);
+  };
+
+  socket.onmessage = function(e){
+    const data = JSON.parse(e.data);
+
+    const div = document.createElement("div");
+    div.className = data.sender === username ? "sent" : "received";
+    div.innerHTML = `<span class="msg">${data.message}</span>`;
+    document.getElementById("chatMessages").appendChild(div);
+
+    const chatWith = data.sender === username ? receiver : data.sender;
+    moveUserToTop(chatWith);
+    updateTime(chatWith);
+  };
+}
+</script>
+
+</body>
+</html> {% endcomment %}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{% comment %} <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chat</title>
+<style>
+body { margin:0; font-family:Arial; background:#f0f0f0; }
+.page-container { display:flex; height:100vh; }
+
+.sidebar {
+  width:220px;
+  background:#eef0f2;
+  padding:1rem;
+  overflow-y:auto;
+}
+.sidebar h3 { text-align:center; }
+.sidebar ul { list-style:none; padding:0; }
+.sidebar li { padding:6px 0; text-align:center; }
+
+.user-btn {
+  background:none;
+  border:none;
+  cursor:pointer;
+  font-size:15px;
+}
+.user-btn:hover { text-decoration:underline; }
+
+.content {
+  flex:1;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+.chat-box {
+  width:100%;
+  max-width:500px;
+  height:80vh;
+  background:#eef0f2;
+  border-radius:1rem;
+  display:flex;
+  flex-direction:column;
+}
+.chat-header {
+  padding:1rem;
+  font-weight:bold;
+  text-align:center;
+  border-bottom:1px solid #ccc;
+}
+.messages {
+  flex:1;
+  padding:1rem;
+  overflow-y:auto;
+}
+.sent { text-align:right; }
+.received { text-align:left; }
+.msg {
+  padding:8px 12px;
+  border-radius:10px;
+  background:#dcf8c6;
+  display:inline-block;
+  margin:4px;
+}
+.received .msg { background:#fff; }
+
+.input-box {
+  display:flex;
+  padding:10px;
+  border-top:1px solid #ccc;
+}
+textarea { flex:1; resize:none; }
+.send-btn {
+  margin-left:5px;
+  padding:6px 12px;
+  border:none;
+  background:#667eea;
+  color:white;
+  border-radius:5px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="page-container">
+
+  <!-- USERS -->
+  <div class="sidebar">
+    <h3>Users</h3>
+    <ul id="userList">
+      {% for u in users %}
+      <li data-user="{{ u.username }}">
+        <button class="user-btn" onclick="selectUser('{{ u.username }}')">
+          {{ u.username }}
+        </button>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <!-- CHAT -->
+  <div class="content">
+    {% if selected_user %}
+    <div class="chat-box">
+      <div class="chat-header">Chat with {{ selected_user }}</div>
+
+      <div class="messages" id="chatMessages">
+        {% for m in messages %}
+          {% if m.sender == request.user.username %}
+            <div class="sent"><span class="msg">{{ m.message }}</span></div>
+          {% else %}
+            <div class="received"><span class="msg">{{ m.message }}</span></div>
+          {% endif %}
+        {% endfor %}
+      </div>
+
+      <div class="input-box">
+        <textarea id="messageInput" rows="2"></textarea>
+        <button id="sendBtn" class="send-btn">Send</button>
+      </div>
+    </div>
+    {% else %}
+    <div class="chat-box">
+      <div class="chat-header">Select user</div>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<script>
+const username = "{{ request.user.username }}";
+const receiver = "{{ selected_user }}";
+const roomName = "{{ room_name }}";
+const userList = document.getElementById("userList");
+const chatMessages = document.getElementById("chatMessages");
+
+/* ===== RESTORE ORDER (TOP FIRST) ===== */
+document.addEventListener("DOMContentLoaded", () => {
+  const order = JSON.parse(localStorage.getItem("chatOrder") || "[]");
+  order.slice().reverse().forEach(u => {
+    const li = document.querySelector(`li[data-user="${u}"]`);
+    if (li) userList.prepend(li);
+  });
+});
+
+/* ===== MOVE USER TO TOP ===== */
+function moveUserToTop(user){
+  const li = document.querySelector(`li[data-user="${user}"]`);
+  if (!li) return;
+
+  userList.prepend(li);
+
+  let order = JSON.parse(localStorage.getItem("chatOrder") || "[]");
+  order = order.filter(u => u !== user);
+  order.unshift(user);
+  localStorage.setItem("chatOrder", JSON.stringify(order));
+}
+
+/* ===== CLICK USER ===== */
+function selectUser(user){
+  moveUserToTop(user);
+  window.location = "?user=" + user;
+}
+
+/* ===== SOCKET ===== */
+if(roomName){
+  const socket = new WebSocket(
+    "ws://" + window.location.host + "/ws/chat/" + roomName + "/"
+  );
+
+  function appendMessage(sender, msg){
+    const div = document.createElement("div");
+    div.className = sender === username ? "sent" : "received";
+    div.innerHTML = `<span class="msg">${msg}</span>`;
+    chatMessages.appendChild(div);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+
+  // Receive messages
+  socket.onmessage = function(e){
+    const data = JSON.parse(e.data);
+    if(data.type === "chat"){
+      appendMessage(data.sender, data.message);
+      moveUserToTop(data.sender === username ? receiver : data.sender);
+    }
+  };
+
+  // Send messages
+  document.getElementById("sendBtn").onclick = () => {
+    const input = document.getElementById("messageInput");
+    const msg = input.value.trim();
+    if(!msg) return;
+
+    socket.send(JSON.stringify({
+      type: "chat",
+      sender: username,
+      receiver: receiver,
+      message: msg,
+      room_name: roomName
+    }));
+
+    appendMessage(username, msg); // <-- show message immediately
+    input.value = "";
+  };
+
+  // Press Enter to send
+  document.getElementById("messageInput").addEventListener("keydown", function(e){
+    if(e.key === "Enter" && !e.shiftKey){
+      e.preventDefault();
+      document.getElementById("sendBtn").click();
+    }
+  });
+}
+</script>
+
+</body>
+</html> {% endcomment %}
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chat</title>
+<style>
+body { margin:0; font-family:Arial; background:#f0f0f0; }
+.page-container { display:flex; height:100vh; }
+
+.sidebar {
+  width:220px;
+  background:#eef0f2;
+  padding:1rem;
+  overflow-y:auto;
+}
+.sidebar h3 { text-align:center; }
+.sidebar ul { list-style:none; padding:0; }
+.sidebar li { padding:6px 0; text-align:center; }
+
+.user-btn {
+  background:none;
+  border:none;
+  cursor:pointer;
+  font-size:15px;
+}
+.user-btn:hover { text-decoration:underline; }
+
+.content {
+  flex:1;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+.chat-box {
+  width:100%;
+  max-width:500px;
+  height:80vh;
+  background:#eef0f2;
+  border-radius:1rem;
+  display:flex;
+  flex-direction:column;
+}
+.chat-header {
+  padding:1rem;
+  font-weight:bold;
+  text-align:center;
+  border-bottom:1px solid #ccc;
+}
+.messages {
+  flex:1;
+  padding:1rem;
+  overflow-y:auto;
+}
+.sent { text-align:right; }
+.received { text-align:left; }
+.msg {
+  padding:8px 12px;
+  border-radius:10px;
+  background:#dcf8c6;
+  display:inline-block;
+  margin:4px;
+}
+.received .msg { background:#fff; }
+
+.input-box {
+  display:flex;
+  padding:10px;
+  border-top:1px solid #ccc;
+}
+textarea { flex:1; resize:none; }
+.send-btn {
+  margin-left:5px;
+  padding:6px 12px;
+  border:none;
+  background:#667eea;
+  color:white;
+  border-radius:5px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="page-container">
+
+  <!-- USERS -->
+  <div class="sidebar">
+    <h3>Users</h3>
+    <ul id="userList">
+      {% for u in users %}
+      <li data-user="{{ u.username }}">
+        <button class="user-btn" onclick="selectUser('{{ u.username }}')">
+          {{ u.username }}
+        </button>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <!-- CHAT -->
+  <div class="content">
+    {% if selected_user %}
+    <div class="chat-box">
+      <div class="chat-header">Chat with {{ selected_user }}</div>
+
+      <div class="messages" id="chatMessages">
+        {% for m in messages %}
+          {% if m.sender == request.user.username %}
+            <div class="sent"><span class="msg">{{ m.message }}</span></div>
+          {% else %}
+            <div class="received"><span class="msg">{{ m.message }}</span></div>
+          {% endif %}
+        {% endfor %}
+      </div>
+
+      <div class="input-box">
+        <textarea id="messageInput" rows="2"></textarea>
+        <button id="sendBtn" class="send-btn">Send</button>
+      </div>
+    </div>
+    {% else %}
+    <div class="chat-box">
+      <div class="chat-header">Select user</div>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<script>
+const username = "{{ request.user.username }}";
+const receiver = "{{ selected_user }}";
+const roomName = "{{ room_name }}";
+const userList = document.getElementById("userList");
+const chatMessages = document.getElementById("chatMessages");
+
+/* ===== RESTORE ORDER (TOP FIRST) ===== */
+document.addEventListener("DOMContentLoaded", () => {
+  const order = JSON.parse(localStorage.getItem("chatOrder") || "[]");
+  order.slice().reverse().forEach(u => {
+    const li = document.querySelector(`li[data-user="${u}"]`);
+    if (li) userList.prepend(li);
+  });
+});
+
+/* ===== MOVE USER TO TOP ===== */
+function moveUserToTop(user){
+  const li = document.querySelector(`li[data-user="${user}"]`);
+  if (!li) return;
+
+  userList.prepend(li);
+
+  let order = JSON.parse(localStorage.getItem("chatOrder") || "[]");
+  order = order.filter(u => u !== user);
+  order.unshift(user);
+  localStorage.setItem("chatOrder", JSON.stringify(order));
+}
+
+/* ===== CLICK USER ===== */
+function selectUser(user){
+  moveUserToTop(user);
+  window.location = "?user=" + user;
+}
+
+/* ===== SOCKET ===== */
+if(roomName){
+  const socket = new WebSocket(
+    "ws://" + window.location.host + "/ws/chat/" + roomName + "/"
+  );
+
+  function appendMessage(sender, msg){
+    const div = document.createElement("div");
+    div.className = sender === username ? "sent" : "received";
+    div.innerHTML = `<span class="msg">${msg}</span>`;
+    chatMessages.appendChild(div);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+
+  // Receive messages
+  socket.onmessage = function(e){
+    const data = JSON.parse(e.data);
+    if(data.type === "chat"){
+      appendMessage(data.sender, data.message);
+      moveUserToTop(data.sender === username ? receiver : data.sender);
+    }
+  };
+
+  // Send messages
+  document.getElementById("sendBtn").onclick = () => {
+    const input = document.getElementById("messageInput");
+    const msg = input.value.trim();
+    if(!msg) return;
+
+    socket.send(JSON.stringify({
+      type: "chat",
+      sender: username,
+      receiver: receiver,
+      message: msg,
+      room_name: roomName
+    }));
+
+    input.value = ""; // <- removed appendMessage here to prevent duplicate
+  };
+
+  // Press Enter to send
+  document.getElementById("messageInput").addEventListener("keydown", function(e){
+    if(e.key === "Enter" && !e.shiftKey){
+      e.preventDefault();
+      document.getElementById("sendBtn").click();
+    }
+  });
+}
 </script>
 
 </body>
