@@ -205,7 +205,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
         self.room_name = self.scope['url_route']['kwargs'].get('room_name')
         self.sender = self.scope["user"].username
 
-        # 🚫 Block self chat (sayu_sayu)
         users = self.room_name.split("_")
         if len(users) == 2 and users[0] == users[1]:
             await self.close()
@@ -219,6 +218,18 @@ class ChatConsumer(AsyncWebsocketConsumer):
         )
 
         await self.accept()
+
+        # ✅ SEND JOIN MESSAGE AS NOTIFICATION (NOT CHAT)
+        for user in users:
+            if user != self.sender:
+                await self.channel_layer.group_send(
+                    f"user_{user}",
+                    {
+                        "type": "notify",
+                        "sender": self.sender,
+                        "message": "joined the chat",
+                    }
+                )
 
     async def disconnect(self, close_code):
         if hasattr(self, "group_name"):

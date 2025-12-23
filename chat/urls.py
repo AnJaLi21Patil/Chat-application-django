@@ -10,7 +10,7 @@
 
 # ]
 from django.urls import path
-from .views import HomeView, login_page, RoomView, register_page
+from .views import HomeView, login_page, RoomView, logout_view, register_page
 
 
 urlpatterns = [
@@ -18,5 +18,6 @@ urlpatterns = [
     path('home/', HomeView, name='home'),
     path('room/<str:username>/', RoomView, name='room'),  # Only username needed
     path('register/', register_page, name='register'),
-    
+    path('logout/', logout_view, name='logout'),
+
 ]
