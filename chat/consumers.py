@@ -202,21 +202,17 @@ from .models import Room, Message
 class ChatConsumer(AsyncWebsocketConsumer):
 
     async def connect(self):
-        # Determine type of connection: chat room or notification
-        self.room_name = self.scope['url_route']['kwargs'].get('room_name', None)
-        self.username = self.scope['url_route']['kwargs'].get('username', None)
+        self.room_name = self.scope['url_route']['kwargs'].get('room_name')
+        self.sender = self.scope["user"].username
 
-        if self.room_name:
-            # Chat room connection
-            self.group_name = f"chat_{self.room_name}"
-        elif self.username:
-            # Notification connection
-            self.group_name = f"user_{self.username}"
-        else:
+        # 🚫 Block self chat (sayu_sayu)
+        users = self.room_name.split("_")
+        if len(users) == 2 and users[0] == users[1]:
             await self.close()
             return
 
-        # Join the group
+        self.group_name = f"chat_{self.room_name}"
+
         await self.channel_layer.group_add(
             self.group_name,
             self.channel_name
@@ -233,10 +229,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     async def receive(self, text_data):
         data = json.loads(text_data)
-        message = data["message"]
-        sender = data["sender"]
+        sender = self.sender
         receiver = data.get("receiver")
         room_name = data.get("room_name")
+        message = data.get("message")
 
         # Save message
         await self.save_message(sender, receiver, room_name, message)
