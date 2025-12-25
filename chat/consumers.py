@@ -194,49 +194,436 @@
 #             receiver=receiver,
 #             message=message
 #         )
+# import json
+# from channels.generic.websocket import AsyncWebsocketConsumer
+# from channels.db import database_sync_to_async
+# from .models import Room, Message
+
+# class ChatConsumer(AsyncWebsocketConsumer):
+
+#     async def connect(self):
+#         self.room_name = self.scope['url_route']['kwargs'].get('room_name')
+#         self.sender = self.scope["user"].username
+
+#         users = self.room_name.split("_")
+#         if len(users) == 2 and users[0] == users[1]:
+#             await self.close()
+#             return
+
+#         self.group_name = f"chat_{self.room_name}"
+
+#         await self.channel_layer.group_add(
+#             self.group_name,
+#             self.channel_name
+#         )
+
+#         await self.accept()
+
+#         # ✅ SEND JOIN MESSAGE AS NOTIFICATION (NOT CHAT)
+#         for user in users:
+#             if user != self.sender:
+#                 await self.channel_layer.group_send(
+#                     f"user_{user}",
+#                     {
+#                         "type": "notify",
+#                         "sender": self.sender,
+#                         "message": "joined the chat",
+#                     }
+#                 )
+
+#     async def disconnect(self, close_code):
+#         if hasattr(self, "group_name"):
+#             await self.channel_layer.group_discard(
+#                 self.group_name,
+#                 self.channel_name
+#             )
+
+#     async def receive(self, text_data):
+#         data = json.loads(text_data)
+#         sender = self.sender
+#         receiver = data.get("receiver")
+#         room_name = data.get("room_name")
+#         message = data.get("message")
+
+#         # Save message
+#         await self.save_message(sender, receiver, room_name, message)
+
+#         # Send to room group
+#         await self.channel_layer.group_send(
+#             f"chat_{room_name}",
+#             {
+#                 "type": "chat_message",
+#                 "message": message,
+#                 "sender": sender,
+#             }
+#         )
+
+#         # Send notification to receiver
+#         await self.channel_layer.group_send(
+#             f"user_{receiver}",
+#             {
+#                 "type": "notify",
+#                 "sender": sender,
+#                 "message": message,
+#             }
+#         )
+
+#     async def chat_message(self, event):
+#         await self.send(text_data=json.dumps({
+#             "type": "chat",
+#             "sender": event["sender"],
+#             "message": event["message"],
+#         }))
+
+#     async def notify(self, event):
+#         await self.send(text_data=json.dumps({
+#             "type": "notification",
+#             "text": f"{event['sender']} sent you a message",
+#             "sender": event["sender"],
+#             "message": event["message"],
+#         }))
+
+#     @database_sync_to_async
+#     def save_message(self, sender, receiver, room_name, message):
+#         room, _ = Room.objects.get_or_create(room_name=room_name)
+#         Message.objects.create(
+#             room=room,
+#             sender=sender,
+#             receiver=receiver,
+#             message=message
+#         )
+
+
+# import json
+# from channels.generic.websocket import AsyncWebsocketConsumer
+# from channels.db import database_sync_to_async
+# from .models import Room, Message
+
+# class ChatConsumer(AsyncWebsocketConsumer):
+
+#     async def connect(self):
+#         self.room_name = self.scope['url_route']['kwargs'].get('room_name')
+#         self.sender = self.scope["user"].username
+
+#         users = self.room_name.split("_")
+#         if len(users) == 2 and users[0] == users[1]:
+#             await self.close()
+#             return
+
+#         self.group_name = f"chat_{self.room_name}"
+
+#         await self.channel_layer.group_add(
+#             self.group_name,
+#             self.channel_name
+#         )
+
+#         await self.accept()
+
+#         # ✅ SEND JOIN MESSAGE AS NOTIFICATION (NOT CHAT)
+#         for user in users:
+#             if user != self.sender:
+#                 await self.channel_layer.group_send(
+#                     f"user_{user}",
+#                     {
+#                         "type": "notify",
+#                         "sender": self.sender,
+#                         "message": "joined the chat",
+#                     }
+#                 )
+
+#         # ✅ ADD: Online status group
+#         await self.channel_layer.group_add(
+#             "online_users",
+#             self.channel_name
+#         )
+#         await self.channel_layer.group_send(
+#             "online_users",
+#             {
+#                 "type": "user_status",
+#                 "username": self.sender,
+#                 "status": "online"
+#             }
+#         )
+
+#     async def disconnect(self, close_code):
+#         if hasattr(self, "group_name"):
+#             await self.channel_layer.group_discard(
+#                 self.group_name,
+#                 self.channel_name
+#             )
+
+#         # ✅ ADD: Notify offline
+#         await self.channel_layer.group_send(
+#             "online_users",
+#             {
+#                 "type": "user_status",
+#                 "username": self.sender,
+#                 "status": "offline"
+#             }
+#         )
+#         await self.channel_layer.group_discard(
+#             "online_users",
+#             self.channel_name
+#         )
+
+#     async def receive(self, text_data):
+#         data = json.loads(text_data)
+#         sender = self.sender
+#         receiver = data.get("receiver")
+#         room_name = data.get("room_name")
+#         message = data.get("message")
+
+#         # Save message
+#         await self.save_message(sender, receiver, room_name, message)
+
+#         # Send to room group
+#         await self.channel_layer.group_send(
+#             f"chat_{room_name}",
+#             {
+#                 "type": "chat_message",
+#                 "message": message,
+#                 "sender": sender,
+#             }
+#         )
+
+#         # Send notification to receiver
+#         await self.channel_layer.group_send(
+#             f"user_{receiver}",
+#             {
+#                 "type": "notify",
+#                 "sender": sender,
+#                 "message": message,
+#             }
+#         )
+
+#     async def chat_message(self, event):
+#         await self.send(text_data=json.dumps({
+#             "type": "chat",
+#             "sender": event["sender"],
+#             "message": event["message"],
+#         }))
+
+#     async def notify(self, event):
+#         await self.send(text_data=json.dumps({
+#             "type": "notification",
+#             "text": f"{event['sender']} sent you a message",
+#             "sender": event["sender"],
+#             "message": event["message"],
+#         }))
+
+#     # ✅ ADD: handle online/offline
+#     async def user_status(self, event):
+#         await self.send(text_data=json.dumps({
+#             "type": "status",
+#             "username": event["username"],
+#             "status": event["status"]
+#         }))
+
+#     @database_sync_to_async
+#     def save_message(self, sender, receiver, room_name, message):
+#         room, _ = Room.objects.get_or_create(room_name=room_name)
+#         Message.objects.create(
+#             room=room,
+#             sender=sender,
+#             receiver=receiver,
+#             message=message
+#         )
+
+
+
+
+
+
+
+
+
+
+
+
+# import json
+# from channels.generic.websocket import AsyncWebsocketConsumer
+# from channels.db import database_sync_to_async
+# from .models import Room, Message
+
+# # ✅ Server-side set to track online users
+# ONLINE_USERS = set()
+
+# class ChatConsumer(AsyncWebsocketConsumer):
+
+#     async def connect(self):
+#         self.sender = self.scope["user"].username
+
+#         # Add this user to the online set
+#         ONLINE_USERS.add(self.sender)
+
+#         # Join online users group
+#         await self.channel_layer.group_add("online_users", self.channel_name)
+#         await self.accept()
+
+#         # Notify everyone that this user is online
+#         await self.channel_layer.group_send(
+#             "online_users",
+#             {
+#                 "type": "user_status",
+#                 "username": self.sender,
+#                 "status": "online"
+#             }
+#         )
+
+#         # Send the list of already online users to this new user
+#         for user in ONLINE_USERS:
+#             if user != self.sender:
+#                 await self.send(text_data=json.dumps({
+#                     "type": "status",
+#                     "username": user,
+#                     "status": "online"
+#                 }))
+
+#     async def disconnect(self, close_code):
+#         ONLINE_USERS.discard(self.sender)
+
+#         # Notify everyone this user went offline
+#         await self.channel_layer.group_send(
+#             "online_users",
+#             {
+#                 "type": "user_status",
+#                 "username": self.sender,
+#                 "status": "offline"
+#             }
+#         )
+
+#         await self.channel_layer.group_discard("online_users", self.channel_name)
+
+#     async def receive(self, text_data):
+#         data = json.loads(text_data)
+#         sender = self.sender
+#         receiver = data.get("receiver")
+#         room_name = data.get("room_name")
+#         message = data.get("message")
+
+#         # Save message
+#         await self.save_message(sender, receiver, room_name, message)
+
+#         # Send message to room group
+#         await self.channel_layer.group_send(
+#             f"chat_{room_name}",
+#             {
+#                 "type": "chat_message",
+#                 "message": message,
+#                 "sender": sender,
+#             }
+#         )
+
+#         # Notify receiver specifically
+#         await self.channel_layer.group_send(
+#             f"user_{receiver}",
+#             {
+#                 "type": "notify",
+#                 "sender": sender,
+#                 "message": message,
+#             }
+#         )
+
+#     async def chat_message(self, event):
+#         await self.send(text_data=json.dumps({
+#             "type": "chat",
+#             "sender": event["sender"],
+#             "message": event["message"],
+#         }))
+
+#     async def notify(self, event):
+#         await self.send(text_data=json.dumps({
+#             "type": "notification",
+#             "text": f"{event['sender']} sent you a message",
+#             "sender": event["sender"],
+#             "message": event["message"],
+#         }))
+
+#     # Handle online/offline events
+#     async def user_status(self, event):
+#         await self.send(text_data=json.dumps({
+#             "type": "status",
+#             "username": event["username"],
+#             "status": event["status"]
+#         }))
+
+#     @database_sync_to_async
+#     def save_message(self, sender, receiver, room_name, message):
+#         room, _ = Room.objects.get_or_create(room_name=room_name)
+#         Message.objects.create(
+#             room=room,
+#             sender=sender,
+#             receiver=receiver,
+#             message=message
+#         )
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from .models import Room, Message
 
+# Server-side set to track online users
+ONLINE_USERS = set()
+
 class ChatConsumer(AsyncWebsocketConsumer):
 
     async def connect(self):
-        self.room_name = self.scope['url_route']['kwargs'].get('room_name')
         self.sender = self.scope["user"].username
+        self.room_name = self.scope['url_route']['kwargs'].get('room_name')
+        self.room_group_name = f"chat_{self.room_name}"  # ✅ join room group
 
-        users = self.room_name.split("_")
-        if len(users) == 2 and users[0] == users[1]:
-            await self.close()
-            return
-
-        self.group_name = f"chat_{self.room_name}"
-
+        # Join room group
         await self.channel_layer.group_add(
-            self.group_name,
+            self.room_group_name,
             self.channel_name
         )
 
+        # Add this user to the online set
+        ONLINE_USERS.add(self.sender)
+
+        # Join online users group
+        await self.channel_layer.group_add("online_users", self.channel_name)
         await self.accept()
 
-        # ✅ SEND JOIN MESSAGE AS NOTIFICATION (NOT CHAT)
-        for user in users:
+        # Notify everyone that this user is online
+        await self.channel_layer.group_send(
+            "online_users",
+            {
+                "type": "user_status",
+                "username": self.sender,
+                "status": "online"
+            }
+        )
+
+        # Send the list of already online users to this new user
+        for user in ONLINE_USERS:
             if user != self.sender:
-                await self.channel_layer.group_send(
-                    f"user_{user}",
-                    {
-                        "type": "notify",
-                        "sender": self.sender,
-                        "message": "joined the chat",
-                    }
-                )
+                await self.send(text_data=json.dumps({
+                    "type": "status",
+                    "username": user,
+                    "status": "online"
+                }))
 
     async def disconnect(self, close_code):
-        if hasattr(self, "group_name"):
-            await self.channel_layer.group_discard(
-                self.group_name,
-                self.channel_name
-            )
+        ONLINE_USERS.discard(self.sender)
+
+        # Notify everyone this user went offline
+        await self.channel_layer.group_send(
+            "online_users",
+            {
+                "type": "user_status",
+                "username": self.sender,
+                "status": "offline"
+            }
+        )
+
+        # Leave online users group
+        await self.channel_layer.group_discard("online_users", self.channel_name)
+
+        # Leave room group
+        await self.channel_layer.group_discard(
+            self.room_group_name,
+            self.channel_name
+        )
 
     async def receive(self, text_data):
         data = json.loads(text_data)
@@ -248,7 +635,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         # Save message
         await self.save_message(sender, receiver, room_name, message)
 
-        # Send to room group
+        # Send message to room group
         await self.channel_layer.group_send(
             f"chat_{room_name}",
             {
@@ -258,7 +645,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             }
         )
 
-        # Send notification to receiver
+        # Notify receiver specifically
         await self.channel_layer.group_send(
             f"user_{receiver}",
             {
@@ -281,6 +668,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
             "text": f"{event['sender']} sent you a message",
             "sender": event["sender"],
             "message": event["message"],
+        }))
+
+    # Handle online/offline events
+    async def user_status(self, event):
+        await self.send(text_data=json.dumps({
+            "type": "status",
+            "username": event["username"],
+            "status": event["status"]
         }))
 
     @database_sync_to_async
